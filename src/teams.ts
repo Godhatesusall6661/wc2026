@@ -57,6 +57,7 @@ export const TEAMS: Record<string, { ru: string; flag: string }> = {
   Albania: { ru: 'Албания', flag: '🇦🇱' },
   'North Macedonia': { ru: 'Сев. Македония', flag: '🇲🇰' },
   'Bosnia and Herzegovina': { ru: 'Босния', flag: '🇧🇦' },
+  'Bosnia-Herzegovina': { ru: 'Босния', flag: '🇧🇦' },
   Iceland: { ru: 'Исландия', flag: '🇮🇸' },
   Finland: { ru: 'Финляндия', flag: '🇫🇮' },
   Kosovo: { ru: 'Косово', flag: '🇽🇰' },
@@ -77,6 +78,7 @@ export const TEAMS: Record<string, { ru: string; flag: string }> = {
   Mali: { ru: 'Мали', flag: '🇲🇱' },
   'Burkina Faso': { ru: 'Буркина-Фасо', flag: '🇧🇫' },
   'DR Congo': { ru: 'ДР Конго', flag: '🇨🇩' },
+  'Congo DR': { ru: 'ДР Конго', flag: '🇨🇩' },
   // Азия и Океания
   Japan: { ru: 'Япония', flag: '🇯🇵' },
   'South Korea': { ru: 'Юж. Корея', flag: '🇰🇷' },
