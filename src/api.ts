@@ -29,6 +29,7 @@ async function rpc<T>(fn: string, args: Record<string, unknown> = {}): Promise<T
 
 export const api = {
   register: (name: string) => rpc<string>('register_participant', { p_name: name }),
+  login: (name: string) => rpc<string>('login_by_name', { p_name: name }),
   me: (token: string) => rpc<Me>('get_me', { p_token: token }),
   matches: () => rpc<Match[]>('get_matches'),
   myPredictions: (token: string) => rpc<Prediction[]>('get_my_predictions', { p_token: token }),

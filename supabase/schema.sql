@@ -138,6 +138,21 @@ begin
   return v_token;
 end $$;
 
+-- Вход по имени: возвращает токен существующего игрока.
+-- ВНИМАНИЕ: знающий имя получает полный доступ к профилю (без пин-кода).
+create or replace function login_by_name(p_name text)
+returns uuid
+language plpgsql security definer set search_path = public
+as $$
+declare v_token uuid;
+begin
+  select token into v_token from participants where lower(name) = lower(btrim(p_name));
+  if not found then
+    raise exception 'Игрок «%» не найден. Проверьте имя или зарегистрируйтесь.', btrim(p_name);
+  end if;
+  return v_token;
+end $$;
+
 create or replace function get_me(p_token uuid)
 returns json
 language plpgsql stable security definer set search_path = public

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, errText } from './api'
 import type { LeaderRow } from './types'
-import { teamFlag } from './teams'
+import { teamLabel } from './teams'
 import Grid from './Grid'
 
 export default function Leaders() {
@@ -42,8 +42,7 @@ function LeaderTable() {
           <tr>
             <th></th>
             <th>Игрок</th>
-            <th title="Очки за прогнозы матчей">Матчи</th>
-            <th title="Бонус за выбранного чемпиона">Чемп.</th>
+            <th>Чемпион</th>
             <th title="Точно угаданные счета">Точные</th>
             <th>Итого</th>
           </tr>
@@ -52,12 +51,8 @@ function LeaderTable() {
           {rows.map((r, i) => (
             <tr key={r.name}>
               <td>{medals[i] ?? i + 1}</td>
-              <td>
-                {r.name}
-                {r.champion_team ? ` ${teamFlag(r.champion_team)}` : ''}
-              </td>
-              <td>{r.match_points}</td>
-              <td>{r.champion_points}</td>
+              <td>{r.name}</td>
+              <td className="champ-cell">{r.champion_team ? teamLabel(r.champion_team) : '—'}</td>
               <td>{r.exact_hits}</td>
               <td><b>{r.total}</b></td>
             </tr>

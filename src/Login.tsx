@@ -3,6 +3,7 @@ import { api, errText } from './api'
 
 export default function Login({ onLogin }: { onLogin: (token: string, justRegistered?: boolean) => void }) {
   const [name, setName] = useState('')
+  const [mode, setMode] = useState<'register' | 'login'>('register')
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -11,8 +12,13 @@ export default function Login({ onLogin }: { onLogin: (token: string, justRegist
     setErr(null)
     setBusy(true)
     try {
-      const token = await api.register(name)
-      onLogin(token, true)
+      if (mode === 'register') {
+        const token = await api.register(name)
+        onLogin(token, true)
+      } else {
+        const token = await api.login(name)
+        onLogin(token, false)
+      }
     } catch (e) {
       setErr(errText(e))
     } finally {
@@ -31,16 +37,31 @@ export default function Login({ onLogin }: { onLogin: (token: string, justRegist
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Ваше имя (как вас знают в чате)"
+          placeholder={mode === 'register' ? 'Ваше имя (как вас знают в чате)' : 'Ваше имя'}
           maxLength={30}
           autoFocus
         />
-        <button disabled={busy || name.trim().length < 2}>{busy ? 'Секунду…' : 'Играть!'}</button>
+        <button disabled={busy || name.trim().length < 2}>
+          {busy ? 'Секунду…' : mode === 'register' ? 'Играть!' : 'Войти'}
+        </button>
       </form>
       {err && <p className="error">{err}</p>}
       <p className="hint">
-        Уже регистрировались? Откройте свою личную ссылку — вход произойдёт сам.
-        Потеряли ссылку — попросите новую у администратора.
+        {mode === 'register' ? (
+          <>
+            Уже играли?{' '}
+            <button type="button" className="link-inline" onClick={() => { setMode('login'); setErr(null) }}>
+              Войти по имени
+            </button>
+          </>
+        ) : (
+          <>
+            Первый раз тут?{' '}
+            <button type="button" className="link-inline" onClick={() => { setMode('register'); setErr(null) }}>
+              Зарегистрироваться
+            </button>
+          </>
+        )}
       </p>
     </div>
   )
