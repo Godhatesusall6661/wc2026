@@ -7,6 +7,7 @@ import Leaders from './Leaders'
 import Champion from './Champion'
 import Rules from './Rules'
 import Admin from './Admin'
+import Welcome from './Welcome'
 
 const TOKEN_KEY = 'wc2026_token'
 
@@ -29,6 +30,7 @@ export default function App() {
   const [me, setMe] = useState<Me | null>(null)
   const [checking, setChecking] = useState(!!token)
   const [tab, setTab] = useState<Tab>('matches')
+  const [justRegistered, setJustRegistered] = useState(false)
 
   useEffect(() => {
     if (!token) return
@@ -48,8 +50,9 @@ export default function App() {
   if (!token || !me) {
     return (
       <Login
-        onLogin={(t) => {
+        onLogin={(t, justReg) => {
           localStorage.setItem(TOKEN_KEY, t)
+          if (justReg) setJustRegistered(true)
           setToken(t)
         }}
       />
@@ -60,6 +63,9 @@ export default function App() {
 
   return (
     <div className="app">
+      {justRegistered && (
+        <Welcome name={me.name} link={personalLink} onClose={() => setJustRegistered(false)} />
+      )}
       <header className="topbar">
         <span className="logo">⚽ ЧМ-2026</span>
         <span className="spacer" />

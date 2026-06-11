@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { api, errText } from './api'
 
-export default function Login({ onLogin }: { onLogin: (token: string) => void }) {
+export default function Login({ onLogin }: { onLogin: (token: string, justRegistered?: boolean) => void }) {
   const [name, setName] = useState('')
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -12,11 +12,7 @@ export default function Login({ onLogin }: { onLogin: (token: string) => void })
     setBusy(true)
     try {
       const token = await api.register(name)
-      alert(
-        'Готово, вы в игре!\n\n' +
-          'Совет: нажмите 🔗 в шапке и сохраните личную ссылку — по ней можно зайти с другого устройства.',
-      )
-      onLogin(token)
+      onLogin(token, true)
     } catch (e) {
       setErr(errText(e))
     } finally {
