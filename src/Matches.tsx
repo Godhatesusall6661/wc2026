@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, errText } from './api'
 import type { Match, MatchPrediction } from './types'
 import { teamLabel, stageLabel } from './teams'
+import TeamSheet from './TeamSheet'
 
 const dayFmt = new Intl.DateTimeFormat('ru-RU', { weekday: 'short', day: 'numeric', month: 'long' })
 const timeFmt = new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-digit' })
@@ -24,6 +25,7 @@ export default function Matches({ token }: { token: string }) {
   const [matches, setMatches] = useState<Match[] | null>(null)
   const [drafts, setDrafts] = useState<Record<number, Draft>>({})
   const [err, setErr] = useState<string | null>(null)
+  const [openTeam, setOpenTeam] = useState<string | null>(null)
 
   useEffect(() => {
     Promise.all([api.matches(), api.myPredictions(token)])
@@ -83,6 +85,7 @@ export default function Matches({ token }: { token: string }) {
               now={now}
               onChange={(d) => setDraft(m.id, d)}
               onSave={() => save(m)}
+              onTeam={setOpenTeam}
             />
           ))}
         </section>
@@ -91,22 +94,27 @@ export default function Matches({ token }: { token: string }) {
         <details className="finished-block">
           <summary>Завершённые матчи ({finished.length})</summary>
           {finished.map((m) => (
-            <MatchCard key={m.id} m={m} draft={drafts[m.id]} now={now} onChange={() => {}} onSave={() => {}} />
+            <MatchCard
+              key={m.id} m={m} draft={drafts[m.id]} now={now}
+              onChange={() => {}} onSave={() => {}} onTeam={setOpenTeam}
+            />
           ))}
         </details>
       )}
+      {openTeam && <TeamSheet team={openTeam} matches={matches} onClose={() => setOpenTeam(null)} />}
     </div>
   )
 }
 
 function MatchCard({
-  m, draft, now, onChange, onSave,
+  m, draft, now, onChange, onSave, onTeam,
 }: {
   m: Match
   draft?: Draft
   now: number
   onChange: (d: Draft) => void
   onSave: () => void
+  onTeam: (team: string) => void
 }) {
   const started = new Date(m.kickoff).getTime() <= now
   const finished = m.status === 'FINISHED'
@@ -129,7 +137,13 @@ function MatchCard({
         </span>
       </div>
       <div className="card-row">
-        <span className="team home">{teamLabel(m.home_team)}</span>
+        <span className="team home">
+          {m.home_team ? (
+            <button className="team-btn" onClick={() => onTeam(m.home_team!)}>{teamLabel(m.home_team)}</button>
+          ) : (
+            '—'
+          )}
+        </span>
         {canEdit ? (
           <span className="score-input">
             <input
@@ -151,7 +165,13 @@ function MatchCard({
             {m.home_goals != null ? `${m.home_goals}:${m.away_goals}` : started ? '—' : 'vs'}
           </span>
         )}
-        <span className="team away">{teamLabel(m.away_team)}</span>
+        <span className="team away">
+          {m.away_team ? (
+            <button className="team-btn" onClick={() => onTeam(m.away_team!)}>{teamLabel(m.away_team)}</button>
+          ) : (
+            '—'
+          )}
+        </span>
       </div>
       {!started && m.odds_home != null && (
         <div className="odds" title="Коэффициенты букмекеров: П1 / ничья / П2">

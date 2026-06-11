@@ -157,3 +157,39 @@ table.leaders {
 
 button.ghost { background: none; border: 1px solid var(--line); border-radius: 8px; padding: 5px 9px; cursor: pointer; font-size: 13px; }
 button.ghost.danger { color: var(--danger); border-color: #e8c4bf; }
+
+/* карточка команды (тап по названию) */
+.team-btn {
+  background: none; border: none; padding: 0; margin: 0;
+  font: inherit; color: inherit; cursor: pointer;
+  border-bottom: 1px dotted var(--muted);
+}
+.modal-back {
+  position: fixed; inset: 0; z-index: 20;
+  background: rgba(21, 33, 43, 0.45);
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.sheet {
+  background: var(--card); width: 100%; max-width: 640px;
+  border-radius: 18px 18px 0 0; padding: 14px 16px calc(16px + env(safe-area-inset-bottom));
+  max-height: 80vh; overflow-y: auto;
+}
+.sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sheet-head h3 { margin: 4px 0; }
+.ts-summary { color: var(--muted); font-size: 13px; margin: 4px 0 10px; }
+.ts-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px;
+}
+.ts-date { width: 92px; flex: none; display: flex; flex-direction: column; line-height: 1.2; }
+.ts-pair { flex: 1; }
+.ts-score { font-weight: 700; white-space: nowrap; }
+.res-badge {
+  flex: none; width: 22px; height: 22px; border-radius: 6px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: #fff;
+}
+.res-w { background: var(--accent); }
+.res-d { background: #98a3b0; }
+.res-l { background: var(--danger); }
+.res-none { background: transparent; }
