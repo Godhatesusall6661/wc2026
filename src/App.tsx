@@ -3,13 +3,12 @@ import { api } from './api'
 import { FEATURES } from './config'
 import type { Me } from './types'
 import Login from './Login'
-import Matches from './Matches'
+import Schedule from './Schedule'
 import Leaders from './Leaders'
 import Champion from './Champion'
 import Rules from './Rules'
 import Admin from './Admin'
 import Welcome from './Welcome'
-import Groups from './Groups'
 
 const TOKEN_KEY = 'wc2026_token'
 
@@ -21,7 +20,7 @@ function readTokenFromHash(): string | null {
   return m[1]
 }
 
-type Tab = 'matches' | 'groups' | 'leaders' | 'champion' | 'rules' | 'admin'
+type Tab = 'matches' | 'leaders' | 'champion' | 'rules' | 'admin'
 
 export default function App() {
   const [token, setToken] = useState<string | null>(() => {
@@ -103,8 +102,7 @@ export default function App() {
         </button>
       </header>
       <main className="content">
-        {tab === 'matches' && <Matches token={token} />}
-        {tab === 'groups' && <Groups />}
+        {tab === 'matches' && <Schedule token={token} />}
         {tab === 'leaders' && <Leaders />}
         {tab === 'champion' && FEATURES.champion && <Champion token={token} />}
         {tab === 'rules' && <Rules />}
@@ -112,7 +110,6 @@ export default function App() {
       </main>
       <nav className="tabs">
         <button className={tab === 'matches' ? 'on' : ''} onClick={() => setTab('matches')}>Матчи</button>
-        <button className={tab === 'groups' ? 'on' : ''} onClick={() => setTab('groups')}>Группы</button>
         <button className={tab === 'leaders' ? 'on' : ''} onClick={() => setTab('leaders')}>Таблица</button>
         {FEATURES.champion && (
           <button className={tab === 'champion' ? 'on' : ''} onClick={() => setTab('champion')}>Чемпион</button>

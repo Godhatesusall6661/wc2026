@@ -5,18 +5,18 @@ import { teamLabel } from './teams'
 import Grid from './Grid'
 
 export default function Leaders() {
-  const [view, setView] = useState<'table' | 'grid'>('table')
+  const [view, setView] = useState<'grid' | 'table'>('grid')
   return (
     <div>
       <div className="seg">
-        <button className={view === 'table' ? 'on' : ''} onClick={() => setView('table')}>
-          Таблица лидеров
-        </button>
         <button className={view === 'grid' ? 'on' : ''} onClick={() => setView('grid')}>
           Сетка прогнозов
         </button>
+        <button className={view === 'table' ? 'on' : ''} onClick={() => setView('table')}>
+          Таблица лидеров
+        </button>
       </div>
-      {view === 'table' ? <LeaderTable /> : <Grid />}
+      {view === 'grid' ? <Grid /> : <LeaderTable />}
     </div>
   )
 }
