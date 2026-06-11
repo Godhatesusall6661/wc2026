@@ -59,6 +59,11 @@ const rows = matches.map((m) => {
     home_goals: home,
     away_goals: away,
     winner,
+    // odds_* по умолчанию null на КАЖДОЙ строке — иначе PostgREST ругается
+    // на разный набор ключей в bulk-upsert (PGRST102)
+    odds_home: null,
+    odds_draw: null,
+    odds_away: null,
     updated_at: new Date().toISOString(),
   }
 })
