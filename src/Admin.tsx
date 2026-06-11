@@ -115,7 +115,7 @@ function MatchEditor({ token, m, onSaved }: { token: string; m: Match; onSaved: 
       <span className="names">
         {teamLabel(m.home_team)} — {teamLabel(m.away_team)}{' '}
         <span className="small">
-          ({new Date(m.kickoff).toLocaleString('ru-RU')}, {m.status})
+          ({new Date(m.kickoff).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })} мск, {m.status})
         </span>
       </span>
       <input

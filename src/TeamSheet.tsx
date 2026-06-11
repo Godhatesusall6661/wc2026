@@ -1,8 +1,12 @@
 import type { Match } from './types'
 import { teamLabel, stageLabel } from './teams'
 
-const dateFmt = new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: '2-digit' })
-const timeFmt = new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-digit' })
+const dateFmt = new Intl.DateTimeFormat('ru-RU', {
+  day: '2-digit', month: '2-digit', timeZone: 'Europe/Moscow',
+})
+const timeFmt = new Intl.DateTimeFormat('ru-RU', {
+  hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow',
+})
 
 type Res = 'В' | 'Н' | 'П'
 
@@ -78,6 +82,7 @@ export default function TeamSheet({
         {own.every((m) => m.status !== 'FINISHED') && (
           <p className="small">Сыгранных матчей пока нет — расписание выше.</p>
         )}
+        <p className="small">Время — московское.</p>
       </div>
     </div>
   )

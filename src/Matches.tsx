@@ -4,8 +4,13 @@ import type { Match, MatchPrediction } from './types'
 import { teamLabel, stageLabel } from './teams'
 import TeamSheet from './TeamSheet'
 
-const dayFmt = new Intl.DateTimeFormat('ru-RU', { weekday: 'short', day: 'numeric', month: 'long' })
-const timeFmt = new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-digit' })
+// всё время конкурса — московское
+const dayFmt = new Intl.DateTimeFormat('ru-RU', {
+  weekday: 'short', day: 'numeric', month: 'long', timeZone: 'Europe/Moscow',
+})
+const timeFmt = new Intl.DateTimeFormat('ru-RU', {
+  hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow',
+})
 
 // Зеркало match_points из supabase/schema.sql — только для отображения,
 // источник истины считает база.
@@ -26,6 +31,7 @@ export default function Matches({ token }: { token: string }) {
   const [drafts, setDrafts] = useState<Record<number, Draft>>({})
   const [err, setErr] = useState<string | null>(null)
   const [openTeam, setOpenTeam] = useState<string | null>(null)
+  const [showAll, setShowAll] = useState(false)
 
   useEffect(() => {
     Promise.all([api.matches(), api.myPredictions(token)])
@@ -72,9 +78,11 @@ export default function Matches({ token }: { token: string }) {
     else days.push({ label, items: [m] })
   }
 
+  const visibleDays = showAll ? days : days.slice(0, 2)
+
   return (
     <div>
-      {days.map((day) => (
+      {visibleDays.map((day) => (
         <section key={day.label}>
           <h2 className="day">{day.label}</h2>
           {day.items.map((m) => (
@@ -90,6 +98,11 @@ export default function Matches({ token }: { token: string }) {
           ))}
         </section>
       ))}
+      {days.length > 2 && (
+        <button className="show-all" onClick={() => setShowAll(!showAll)}>
+          {showAll ? '↑ Свернуть до ближайших' : `Показать всё расписание (ещё ${days.length - 2} игровых дней)`}
+        </button>
+      )}
       {finished.length > 0 && (
         <details className="finished-block">
           <summary>Завершённые матчи ({finished.length})</summary>
@@ -133,7 +146,7 @@ function MatchCard({
       <div className="card-top">
         <span className="stage">{stageLabel(m)}</span>
         <span className="time">
-          {live ? '● идёт' : finished ? 'завершён' : timeFmt.format(new Date(m.kickoff))}
+          {live ? '● идёт' : finished ? 'завершён' : `${timeFmt.format(new Date(m.kickoff))} мск`}
         </span>
       </div>
       <div className="card-row">

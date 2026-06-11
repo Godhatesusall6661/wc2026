@@ -4,7 +4,7 @@ import type { ChampionState } from './types'
 import { teamLabel } from './teams'
 
 const dtFmt = new Intl.DateTimeFormat('ru-RU', {
-  day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
+  day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow',
 })
 
 export default function Champion({ token }: { token: string }) {
@@ -63,7 +63,7 @@ export default function Champion({ token }: { token: string }) {
       ) : open ? (
         <>
           <p className="deadline">
-            Выбор закроется {dtFmt.format(new Date(st.deadline!))} — со стартом первого
+            Выбор закроется {dtFmt.format(new Date(st.deadline!))} мск — со стартом первого
             четвертьфинала.
           </p>
           <div className="team-grid">

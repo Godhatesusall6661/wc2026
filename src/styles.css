@@ -84,6 +84,12 @@ body {
 .all-preds td { padding: 3px 6px; border-top: 1px solid var(--line); }
 .all-preds td:last-child { text-align: right; color: var(--accent); font-weight: 600; }
 
+.show-all {
+  display: block; width: 100%; margin: 14px 0;
+  padding: 12px; font-size: 14px;
+  background: none; border: 1px dashed var(--line); border-radius: var(--radius);
+  color: var(--muted); cursor: pointer;
+}
 .finished-block { margin: 20px 0; }
 .finished-block > summary { font-size: 15px; color: var(--muted); cursor: pointer; padding: 8px 4px; }
 
