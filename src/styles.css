@@ -99,6 +99,28 @@ body {
 .screen-msg { text-align: center; color: var(--muted); margin-top: 48px; line-height: 1.5; }
 .footnote { margin: 10px 4px; }
 
+/* переключатель видов в табе «Таблица» */
+.seg { display: flex; gap: 4px; margin-top: 14px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 4px; }
+.seg button { flex: 1; border: none; background: none; padding: 9px 6px; border-radius: 9px; font-size: 14px; color: var(--muted); cursor: pointer; }
+.seg button.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+
+/* сетка прогнозов */
+.grid-section { margin-top: 16px; }
+.grid-section h3 { margin: 0 0 8px; }
+.grid-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); -webkit-overflow-scrolling: touch; }
+.grid-table { border-collapse: collapse; font-size: 13px; }
+.grid-table th, .grid-table td { border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); padding: 6px 8px; text-align: center; white-space: nowrap; }
+.grid-table thead th { position: sticky; top: 0; background: var(--bg); z-index: 2; }
+.grid-table .g-name { position: sticky; left: 0; background: var(--card); text-align: left; z-index: 1; min-width: 96px; box-shadow: 1px 0 0 var(--line); }
+.grid-table thead .g-name { z-index: 3; background: var(--bg); }
+.grid-table .g-flags { display: block; font-size: 15px; line-height: 1.1; }
+.grid-table .g-res { display: block; font-size: 11px; color: var(--muted); font-weight: 700; }
+.grid-table .g-pred { display: block; }
+.grid-table .g-pts { display: block; font-size: 11px; color: var(--accent); font-weight: 700; }
+.grid-table td.has-pts { background: var(--accent-soft); }
+.grid-table .g-empty { color: var(--line); }
+.grid-table .g-sum { font-weight: 700; background: var(--bg); }
+
 .login { max-width: 420px; margin: 10vh auto 0; padding: 0 20px; text-align: center; }
 .login h1 { font-size: 26px; line-height: 1.3; }
 .login form { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; }

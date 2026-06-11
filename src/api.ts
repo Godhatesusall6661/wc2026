@@ -1,5 +1,5 @@
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config'
-import type { Match, Prediction, Me, LeaderRow, MatchPrediction, ChampionState, Person } from './types'
+import type { Match, Prediction, Me, LeaderRow, MatchPrediction, ChampionState, Person, GridRow } from './types'
 
 async function rpc<T>(fn: string, args: Record<string, unknown> = {}): Promise<T> {
   if (SUPABASE_URL.includes('YOUR-PROJECT')) {
@@ -37,6 +37,7 @@ export const api = {
   matchPredictions: (matchId: number) =>
     rpc<MatchPrediction[]>('get_match_predictions', { p_match_id: matchId }),
   leaderboard: () => rpc<LeaderRow[]>('get_leaderboard'),
+  grid: () => rpc<GridRow[]>('get_grid'),
   championState: (token: string) => rpc<ChampionState>('get_champion_state', { p_token: token }),
   saveChampion: (token: string, team: string) =>
     rpc<null>('save_champion', { p_token: token, p_team: team }),

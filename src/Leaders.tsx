@@ -2,8 +2,26 @@ import { useEffect, useState } from 'react'
 import { api, errText } from './api'
 import type { LeaderRow } from './types'
 import { teamFlag } from './teams'
+import Grid from './Grid'
 
 export default function Leaders() {
+  const [view, setView] = useState<'table' | 'grid'>('table')
+  return (
+    <div>
+      <div className="seg">
+        <button className={view === 'table' ? 'on' : ''} onClick={() => setView('table')}>
+          Таблица лидеров
+        </button>
+        <button className={view === 'grid' ? 'on' : ''} onClick={() => setView('grid')}>
+          Сетка прогнозов
+        </button>
+      </div>
+      {view === 'table' ? <LeaderTable /> : <Grid />}
+    </div>
+  )
+}
+
+function LeaderTable() {
   const [rows, setRows] = useState<LeaderRow[] | null>(null)
   const [err, setErr] = useState<string | null>(null)
 

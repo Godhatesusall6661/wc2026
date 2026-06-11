@@ -264,6 +264,39 @@ as $$
   order by 6 desc, 5 desc, 1
 $$;
 
+-- Общая «сетка»: прогнозы всех на все НАЧАВШИЕСЯ матчи (до старта — скрыто).
+-- Клиент строит из этого две матрицы: групповой этап и плей-офф.
+create or replace function get_grid()
+returns table (
+  match_id    bigint,
+  stage       text,
+  group_name  text,
+  kickoff     timestamptz,
+  home_team   text,
+  away_team   text,
+  status      text,
+  home_goals  int,
+  away_goals  int,
+  participant text,
+  pred_home   int,
+  pred_away   int,
+  points      int
+)
+language sql stable security definer set search_path = public
+as $$
+  select m.id, m.stage, m.group_name, m.kickoff, m.home_team, m.away_team, m.status,
+         m.home_goals, m.away_goals,
+         pa.name, p.home_goals, p.away_goals,
+         case when m.status = 'FINISHED'
+              then match_points(p.home_goals, p.away_goals, m.home_goals, m.away_goals)
+              else null end
+  from matches m
+  join predictions p   on p.match_id = m.id
+  join participants pa on pa.id = p.participant_id
+  where m.kickoff <= now()
+  order by m.kickoff, m.id, pa.name
+$$;
+
 create or replace function get_champion_state(p_token uuid)
 returns json
 language plpgsql stable security definer set search_path = public
