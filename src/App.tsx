@@ -61,6 +61,21 @@ export default function App() {
 
   const personalLink = `${location.origin}${location.pathname}#t=${token}`
 
+  function logout() {
+    if (
+      !confirm(
+        'Выйти из профиля «' + me!.name + '»?\n\n' +
+          'Чтобы вернуться, понадобится личная ссылка (кнопка 🔗). ' +
+          'Если не сохранили — её выдаст администратор.',
+      )
+    )
+      return
+    localStorage.removeItem(TOKEN_KEY)
+    setMe(null)
+    setToken(null)
+    setTab('matches')
+  }
+
   return (
     <div className="app">
       {justRegistered && (
@@ -80,6 +95,9 @@ export default function App() {
           }
         >
           🔗
+        </button>
+        <button className="link-btn" title="Выйти / сменить игрока" onClick={logout}>
+          Выйти
         </button>
       </header>
       <main className="content">
