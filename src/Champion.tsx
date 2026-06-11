@@ -63,8 +63,8 @@ export default function Champion({ token }: { token: string }) {
       ) : open ? (
         <>
           <p className="deadline">
-            Выбор закроется {dtFmt.format(new Date(st.deadline!))} мск — со стартом первого
-            четвертьфинала.
+            Выбор закроется {dtFmt.format(new Date(st.deadline!))} мск (в Миассе на 2 часа
+            больше) — со стартом первого четвертьфинала.
           </p>
           <div className="team-grid">
             {st.teams.map((t) => (

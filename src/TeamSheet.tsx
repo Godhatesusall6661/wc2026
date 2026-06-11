@@ -82,7 +82,7 @@ export default function TeamSheet({
         {own.every((m) => m.status !== 'FINISHED') && (
           <p className="small">Сыгранных матчей пока нет — расписание выше.</p>
         )}
-        <p className="small">Время — московское.</p>
+        <p className="small">Время — московское (в Миассе на 2 часа больше).</p>
       </div>
     </div>
   )

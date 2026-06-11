@@ -11,6 +11,10 @@ const dayFmt = new Intl.DateTimeFormat('ru-RU', {
 const timeFmt = new Intl.DateTimeFormat('ru-RU', {
   hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow',
 })
+// Миасс = Челябинская область, UTC+5 (на 2 часа впереди Москвы)
+const miassFmt = new Intl.DateTimeFormat('ru-RU', {
+  hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Yekaterinburg',
+})
 
 // Зеркало match_points из supabase/schema.sql — только для отображения,
 // источник истины считает база.
@@ -22,6 +26,14 @@ export function matchPoints(ph: number, pa: number, rh: number, ra: number): num
   if (ph === rh && pa === ra) pts += 3
   if (ph - pa === rh - ra && Math.abs(rh - ra) >= 3) pts += 1
   return pts
+}
+
+function plural(n: number): string {
+  const m10 = n % 10
+  const m100 = n % 100
+  if (m10 === 1 && m100 !== 11) return `${n} игровой день`
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return `${n} игровых дня`
+  return `${n} игровых дней`
 }
 
 type Draft = { h: string; a: string; saved: boolean; busy?: boolean; err?: string }
@@ -100,7 +112,7 @@ export default function Matches({ token }: { token: string }) {
       ))}
       {days.length > 2 && (
         <button className="show-all" onClick={() => setShowAll(!showAll)}>
-          {showAll ? '↑ Свернуть до ближайших' : `Показать всё расписание (ещё ${days.length - 2} игровых дней)`}
+          {showAll ? '↑ Свернуть до ближайших' : `Показать всё расписание (ещё ${plural(days.length - 2)})`}
         </button>
       )}
       {finished.length > 0 && (
@@ -146,7 +158,11 @@ function MatchCard({
       <div className="card-top">
         <span className="stage">{stageLabel(m)}</span>
         <span className="time">
-          {live ? '● идёт' : finished ? 'завершён' : `${timeFmt.format(new Date(m.kickoff))} мск`}
+          {live
+            ? '● идёт'
+            : finished
+              ? 'завершён'
+              : `${timeFmt.format(new Date(m.kickoff))} мск · ${miassFmt.format(new Date(m.kickoff))} Миасс`}
         </span>
       </div>
       <div className="card-row">
