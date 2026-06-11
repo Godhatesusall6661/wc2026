@@ -1,11 +1,14 @@
-// Синхронизация расписания и результатов ЧМ-2026 из football-data.org
-// в Supabase + (опционально) коэффициенты букмекеров из The Odds API.
+// Синхронизация ЧМ-2026 в Supabase.
+//   Расписание/команды/стадии/статус ← football-data.org
+//   Счёт результатов и коэффициенты       ← the-odds-api.com
+// (football-data на бесплатном тарифе помечает матч FINISHED, но счёт по ЧМ НЕ отдаёт,
+//  поэтому источник счёта — the-odds-api /scores.)
 //
-// Запуск локально:  source ~/secrets_champ26.env && npm run sync
-// В CI крутится по крону каждые 20 минут (.github/workflows/sync.yml).
+// Запуск локально:  set -a && source ~/secrets_champ26.env && set +a && npm run sync
+// В CI крутится по крону (.github/workflows/sync.yml).
 //
-// Обязательные переменные: FOOTBALL_DATA_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_KEY
-// Опциональная: ODDS_API_KEY (нет ключа — коэффициенты просто пропускаются)
+// Обязательные: FOOTBALL_DATA_TOKEN, SUPABASE_URL, SUPABASE_SERVICE_KEY
+// Желательный:  ODDS_API_KEY (без него не будет ни счёта, ни коэффициентов)
 
 const need = (key) => {
   const v = process.env[key]
@@ -20,8 +23,42 @@ const FD_TOKEN = need('FOOTBALL_DATA_TOKEN')
 const SB_URL = need('SUPABASE_URL').replace(/\/$/, '')
 const SB_KEY = need('SUPABASE_SERVICE_KEY')
 const ODDS_KEY = process.env.ODDS_API_KEY ?? null
+const NOW = new Date().toISOString()
 
-// --- 1. Матчи из football-data.org ---
+// приводим к одному виду названия команд, которые два API пишут по-разному
+const ALIAS = {
+  czechrepublic: 'czechia',
+  korearepublic: 'southkorea',
+  republicofkorea: 'southkorea',
+  turkey: 'turkiye',
+  ivorycoast: 'cotedivoire',
+  usa: 'unitedstates',
+}
+const norm = (s) => {
+  const n = (s ?? '').toLowerCase().replace(/[^a-z]/g, '')
+  return ALIAS[n] ?? n
+}
+const pairKey = (h, a) => `${norm(h)}|${norm(a)}`
+
+async function upsert(rows, label) {
+  if (rows.length === 0) return
+  const res = await fetch(`${SB_URL}/rest/v1/matches?on_conflict=id`, {
+    method: 'POST',
+    headers: {
+      apikey: SB_KEY,
+      Authorization: `Bearer ${SB_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: 'resolution=merge-duplicates,return=minimal',
+    },
+    body: JSON.stringify(rows),
+  })
+  if (!res.ok) {
+    console.error(`Supabase (${label}): HTTP ${res.status}`, await res.text())
+    process.exit(1)
+  }
+}
+
+// --- 1. Расписание из football-data ---
 
 const fdRes = await fetch('https://api.football-data.org/v4/competitions/WC/matches', {
   headers: { 'X-Auth-Token': FD_TOKEN },
@@ -32,23 +69,24 @@ if (!fdRes.ok) {
 }
 const { matches } = await fdRes.json()
 
-const rows = matches.map((m) => {
+// мета-строки (без голов — чтобы НЕ затирать уже сохранённый счёт)
+// + карта счёта от football-data, если он его всё-таки отдал
+const meta = []
+const fdScore = {}
+for (const m of matches) {
   const s = m.score ?? {}
   let home = s.fullTime?.home ?? null
   let away = s.fullTime?.away ?? null
-  // Правило конкурса: счёт берётся ДО серии пенальти.
-  // В v4 fullTime уже не включает пенальти, но на всякий случай
-  // пересобираем из периодов, когда была серия.
+  // плей-офф: счёт ДО серии пенальти
   if (s.duration === 'PENALTY_SHOOTOUT' && s.regularTime) {
     home = (s.regularTime.home ?? 0) + (s.extraTime?.home ?? 0)
     away = (s.regularTime.away ?? 0) + (s.extraTime?.away ?? 0)
   }
-  // А «кто прошёл дальше» — наоборот, с учётом пенальти (для бонуса за чемпиона)
   const winner =
     s.winner === 'HOME_TEAM' ? m.homeTeam?.name :
     s.winner === 'AWAY_TEAM' ? m.awayTeam?.name : null
-
-  return {
+  fdScore[m.id] = { home, away, winner }
+  meta.push({
     id: m.id,
     stage: m.stage,
     group_name: m.group ?? null,
@@ -56,89 +94,95 @@ const rows = matches.map((m) => {
     home_team: m.homeTeam?.name ?? null,
     away_team: m.awayTeam?.name ?? null,
     status: m.status,
-    home_goals: home,
-    away_goals: away,
-    winner,
-    // odds_* по умолчанию null на КАЖДОЙ строке — иначе PostgREST ругается
-    // на разный набор ключей в bulk-upsert (PGRST102)
     odds_home: null,
     odds_draw: null,
     odds_away: null,
-    updated_at: new Date().toISOString(),
-  }
-})
+    updated_at: NOW,
+  })
+}
 
-// --- 2. Коэффициенты (опционально) ---
+// --- 2. Коэффициенты и счёт из the-odds-api ---
 
+const oddsScore = {} // pairKey -> {home, away}
 let oddsApplied = 0
 if (ODDS_KEY) {
+  const base = 'https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup'
+  // 2a. коэффициенты (h2h)
   try {
-    const oddsRes = await fetch(
-      `https://api.the-odds-api.com/v4/sports/soccer_fifa_world_cup/odds/?apiKey=${ODDS_KEY}&regions=eu&markets=h2h&oddsFormat=decimal`,
-    )
-    if (oddsRes.ok) {
-      const events = await oddsRes.json()
-      // приводим к одному виду имена, которые два API пишут по-разному
-      const ALIAS = {
-        czechrepublic: 'czechia',
-        korearepublic: 'southkorea',
-        republicofkorea: 'southkorea',
-        turkey: 'turkiye',
-        ivorycoast: 'cotedivoire',
-        usa: 'unitedstates',
-      }
-      const norm = (s) => {
-        const n = (s ?? '').toLowerCase().replace(/[^a-z]/g, '')
-        return ALIAS[n] ?? n
-      }
+    const r = await fetch(`${base}/odds/?apiKey=${ODDS_KEY}&regions=eu&markets=h2h&oddsFormat=decimal`)
+    if (r.ok) {
+      const events = await r.json()
       for (const ev of events) {
-        const row = rows.find(
-          (r) =>
-            r.home_team && r.away_team &&
-            ((norm(r.home_team) === norm(ev.home_team) && norm(r.away_team) === norm(ev.away_team)) ||
-              (norm(r.home_team).includes(norm(ev.home_team)) && norm(r.away_team).includes(norm(ev.away_team)))),
-        )
+        const row = meta.find((x) => x.home_team && x.away_team &&
+          (pairKey(x.home_team, x.away_team) === pairKey(ev.home_team, ev.away_team) ||
+           pairKey(x.home_team, x.away_team) === pairKey(ev.away_team, ev.home_team)))
         if (!row) continue
-        // медиана по букмекерам, чтобы один выброс не искажал
-        const collect = (pick) => {
-          const vals = (ev.bookmakers ?? [])
+        const med = (pick) => {
+          const v = (ev.bookmakers ?? [])
             .map((b) => b.markets?.find((mk) => mk.key === 'h2h')?.outcomes?.find(pick)?.price)
-            .filter((x) => typeof x === 'number')
-            .sort((x, y) => x - y)
-          return vals.length ? vals[Math.floor(vals.length / 2)] : null
+            .filter((x) => typeof x === 'number').sort((x, y) => x - y)
+          return v.length ? v[Math.floor(v.length / 2)] : null
         }
-        row.odds_home = collect((o) => o.name === ev.home_team)
-        row.odds_away = collect((o) => o.name === ev.away_team)
-        row.odds_draw = collect((o) => o.name === 'Draw')
+        row.odds_home = med((o) => norm(o.name) === norm(ev.home_team))
+        row.odds_away = med((o) => norm(o.name) === norm(ev.away_team))
+        row.odds_draw = med((o) => o.name === 'Draw')
         if (row.odds_home) oddsApplied++
       }
     } else {
-      console.warn(`The Odds API: HTTP ${oddsRes.status} — коэффициенты пропущены`)
+      console.warn(`odds h2h: HTTP ${r.status}`)
     }
   } catch (e) {
-    console.warn('The Odds API недоступен — коэффициенты пропущены:', e.message)
+    console.warn('odds h2h недоступны:', e.message)
+  }
+  // 2b. счёт завершённых матчей (daysFrom max 3)
+  try {
+    const r = await fetch(`${base}/scores/?apiKey=${ODDS_KEY}&daysFrom=3`)
+    if (r.ok) {
+      const events = await r.json()
+      for (const ev of events) {
+        if (!ev.completed || !ev.scores) continue
+        const sc = {}
+        for (const s of ev.scores) sc[norm(s.name)] = Number(s.score)
+        const h = sc[norm(ev.home_team)]
+        const a = sc[norm(ev.away_team)]
+        if (Number.isFinite(h) && Number.isFinite(a)) {
+          // в обе ориентации — на случай, если у источников home/away поменяны местами
+          oddsScore[pairKey(ev.home_team, ev.away_team)] = { home: h, away: a }
+          oddsScore[pairKey(ev.away_team, ev.home_team)] = { home: a, away: h }
+        }
+      }
+    } else {
+      console.warn(`odds scores: HTTP ${r.status}`)
+    }
+  } catch (e) {
+    console.warn('odds scores недоступны:', e.message)
   }
 }
 
-// --- 3. Запись в Supabase (service key, мимо RLS) ---
+// --- 3. Результаты: счёт от football-data, иначе от the-odds-api ---
 
-const upRes = await fetch(`${SB_URL}/rest/v1/matches?on_conflict=id`, {
-  method: 'POST',
-  headers: {
-    apikey: SB_KEY,
-    Authorization: `Bearer ${SB_KEY}`,
-    'Content-Type': 'application/json',
-    Prefer: 'resolution=merge-duplicates,return=minimal',
-  },
-  body: JSON.stringify(rows),
-})
-if (!upRes.ok) {
-  console.error(`Supabase: HTTP ${upRes.status}`, await upRes.text())
-  process.exit(1)
+const results = []
+for (const row of meta) {
+  const fd = fdScore[row.id]
+  let home = fd?.home ?? null
+  let away = fd?.away ?? null
+  let winner = fd?.winner ?? null
+  if ((home == null || away == null) && row.home_team && row.away_team) {
+    const os = oddsScore[pairKey(row.home_team, row.away_team)]
+    if (os) { home = os.home; away = os.away }
+  }
+  if (home != null && away != null) {
+    // полная строка (мета + счёт): иначе upsert-INSERT падает на NOT NULL stage
+    results.push({ ...row, home_goals: home, away_goals: away, winner, status: 'FINISHED' })
+  }
 }
 
-const finished = rows.filter((r) => r.status === 'FINISHED').length
+// --- 4. Запись: сначала мета (всё), потом результаты (только со счётом) ---
+
+await upsert(meta, 'meta')
+await upsert(results, 'results')
+
 console.log(
-  `OK: матчей ${rows.length}, завершённых ${finished}` +
-    (ODDS_KEY ? `, с коэффициентами ${oddsApplied}` : ''),
+  `OK: матчей ${meta.length}, со счётом ${results.length}` +
+    (ODDS_KEY ? `, с коэффициентами ${oddsApplied}` : ' (ODDS_API_KEY не задан — нет счёта и кэфов)'),
 )
