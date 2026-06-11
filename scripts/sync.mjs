@@ -78,7 +78,19 @@ if (ODDS_KEY) {
     )
     if (oddsRes.ok) {
       const events = await oddsRes.json()
-      const norm = (s) => (s ?? '').toLowerCase().replace(/[^a-z]/g, '')
+      // приводим к одному виду имена, которые два API пишут по-разному
+      const ALIAS = {
+        czechrepublic: 'czechia',
+        korearepublic: 'southkorea',
+        republicofkorea: 'southkorea',
+        turkey: 'turkiye',
+        ivorycoast: 'cotedivoire',
+        usa: 'unitedstates',
+      }
+      const norm = (s) => {
+        const n = (s ?? '').toLowerCase().replace(/[^a-z]/g, '')
+        return ALIAS[n] ?? n
+      }
       for (const ev of events) {
         const row = rows.find(
           (r) =>
