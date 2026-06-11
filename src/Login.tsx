@@ -13,8 +13,8 @@ export default function Login({ onLogin }: { onLogin: (token: string) => void })
     try {
       const token = await api.register(name)
       alert(
-        'Готово! Сейчас откроется конкурс.\n\n' +
-          'Нажмите 🔗 в шапке и сохраните личную ссылку — по ней вы будете заходить с других устройств.',
+        'Готово, вы в игре!\n\n' +
+          'Совет: нажмите 🔗 в шапке и сохраните личную ссылку — по ней можно зайти с другого устройства.',
       )
       onLogin(token)
     } catch (e) {
