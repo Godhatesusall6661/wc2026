@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from './api'
+import { FEATURES } from './config'
 import type { Me } from './types'
 import Login from './Login'
 import Matches from './Matches'
@@ -105,7 +106,7 @@ export default function App() {
         {tab === 'matches' && <Matches token={token} />}
         {tab === 'groups' && <Groups />}
         {tab === 'leaders' && <Leaders />}
-        {tab === 'champion' && <Champion token={token} />}
+        {tab === 'champion' && FEATURES.champion && <Champion token={token} />}
         {tab === 'rules' && <Rules />}
         {tab === 'admin' && me.is_admin && <Admin token={token} />}
       </main>
@@ -113,7 +114,9 @@ export default function App() {
         <button className={tab === 'matches' ? 'on' : ''} onClick={() => setTab('matches')}>Матчи</button>
         <button className={tab === 'groups' ? 'on' : ''} onClick={() => setTab('groups')}>Группы</button>
         <button className={tab === 'leaders' ? 'on' : ''} onClick={() => setTab('leaders')}>Таблица</button>
-        <button className={tab === 'champion' ? 'on' : ''} onClick={() => setTab('champion')}>Чемпион</button>
+        {FEATURES.champion && (
+          <button className={tab === 'champion' ? 'on' : ''} onClick={() => setTab('champion')}>Чемпион</button>
+        )}
         <button className={tab === 'rules' ? 'on' : ''} onClick={() => setTab('rules')}>Правила</button>
         {me.is_admin && (
           <button className={tab === 'admin' ? 'on' : ''} onClick={() => setTab('admin')}>Админ</button>
