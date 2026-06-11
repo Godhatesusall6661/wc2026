@@ -2,7 +2,8 @@ name: Sync results
 
 on:
   schedule:
-    - cron: '*/20 * * * *'
+    # смещено от ровного часа: GitHub чаще задерживает запуски на :00
+    - cron: '8,28,48 * * * *'
   workflow_dispatch:
 
 jobs:
