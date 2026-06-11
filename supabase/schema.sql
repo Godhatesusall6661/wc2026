@@ -30,6 +30,7 @@ create table if not exists matches (
   odds_home  numeric(6,2),
   odds_draw  numeric(6,2),
   odds_away  numeric(6,2),
+  force_open boolean not null default false,  -- админ-флаг: показать прогнозы до свистка
   updated_at timestamptz not null default now()
 );
 
@@ -222,7 +223,7 @@ begin
   if not found then
     raise exception 'Матч не найден';
   end if;
-  if m.kickoff > now() then
+  if m.kickoff > now() and not m.force_open then
     raise exception 'Чужие прогнозы откроются после начала матча';
   end if;
   return query
@@ -308,7 +309,7 @@ as $$
   from matches m
   join predictions p   on p.match_id = m.id
   join participants pa on pa.id = p.participant_id
-  where m.kickoff <= now()
+  where (m.kickoff <= now() or m.force_open)
   order by m.kickoff, m.id, pa.name
 $$;
 
