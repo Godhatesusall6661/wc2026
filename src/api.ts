@@ -1,19 +1,27 @@
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from './config'
+import { SUPABASE_URL, SUPABASE_ANON_KEY, PROXY_URL } from './config'
 import type { Match, Prediction, Me, LeaderRow, MatchPrediction, ChampionState, Person, GridRow } from './types'
 
 async function rpc<T>(fn: string, args: Record<string, unknown> = {}): Promise<T> {
   if (SUPABASE_URL.includes('YOUR-PROJECT')) {
     throw new Error('Сайт ещё не настроен: заполните src/config.ts (см. SETUP.md)')
   }
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
-    method: 'POST',
-    headers: {
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(args),
-  })
+  // Через прокси (Yandex, доступен из РФ) — ключ держит сама функция.
+  // Без прокси — напрямую в Supabase с anon-ключом.
+  const res = PROXY_URL
+    ? await fetch(`${PROXY_URL}/rest/v1/rpc/${fn}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(args),
+      })
+    : await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(args),
+      })
   const text = await res.text()
   let data: any = null
   try {
