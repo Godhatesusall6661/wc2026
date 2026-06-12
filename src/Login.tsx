@@ -12,12 +12,23 @@ export default function Login({ onLogin }: { onLogin: (token: string, justRegist
     setErr(null)
     setBusy(true)
     try {
-      if (mode === 'register') {
-        const token = await api.register(name)
-        onLogin(token, true)
-      } else {
+      if (mode === 'login') {
         const token = await api.login(name)
         onLogin(token, false)
+      } else {
+        // Режим «Играть»: новое имя — регистрируем, уже занятое — это
+        // возвращается свой игрок, просто входим под ним (без ошибки).
+        try {
+          const token = await api.register(name)
+          onLogin(token, true)
+        } catch (e) {
+          if (/занят|exist/i.test(errText(e))) {
+            const token = await api.login(name)
+            onLogin(token, false)
+          } else {
+            throw e
+          }
+        }
       }
     } catch (e) {
       setErr(errText(e))
