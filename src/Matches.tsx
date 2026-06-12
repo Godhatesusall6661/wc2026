@@ -19,8 +19,9 @@ const miassFmt = new Intl.DateTimeFormat('ru-RU', {
 // Зеркало match_points из supabase/schema.sql — только для отображения,
 // источник истины считает база.
 export function matchPoints(ph: number, pa: number, rh: number, ra: number): number {
-  let pts = 0
-  if (Math.sign(ph - pa) === Math.sign(rh - ra)) pts += 3
+  // Исход не угадан → 0 (ни разница, ни ошибка на 1 гол не считаются).
+  if (Math.sign(ph - pa) !== Math.sign(rh - ra)) return 0
+  let pts = 3
   if (ph - pa === rh - ra) pts += 4
   else if (Math.abs(ph - pa - (rh - ra)) === 1) pts += 2
   if (ph === rh && pa === ra) pts += 3

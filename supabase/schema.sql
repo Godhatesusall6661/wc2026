@@ -63,9 +63,8 @@ alter table champion_picks enable row level security;
 -- 3) полностью угадан счёт                 +3
 -- 4) бонус: угадана разница >= 3 мячей     +1
 -- Пункты суммируются, максимум 11.
--- ВНИМАНИЕ: +2 за «ошибку в 1 мяч» даётся и при неугаданном исходе
--- (буквальное чтение правил). Если организатор считает иначе —
--- дописать ко второму when условие: and sign(ph - pa) = sign(rh - ra)
+-- ВАЖНО: если ИСХОД не угадан — 0 за матч. Ни разница, ни «ошибка в 1 мяч»
+-- без угаданного исхода не начисляются (решение организатора).
 
 create or replace function match_points(ph int, pa int, rh int, ra int)
 returns int
@@ -73,8 +72,9 @@ language sql immutable
 as $$
   select case
     when ph is null or pa is null or rh is null or ra is null then 0
+    when sign(ph - pa) <> sign(rh - ra) then 0
     else
-      (case when sign(ph - pa) = sign(rh - ra) then 3 else 0 end)
+      3
     + (case when (ph - pa) = (rh - ra) then 4
             when abs((ph - pa) - (rh - ra)) = 1 then 2
             else 0 end)
