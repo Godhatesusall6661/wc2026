@@ -6,11 +6,12 @@ import { teamFlag, teamLabel, stageLabel } from './teams'
 // Общая «сетка»: строки — игроки, столбцы — начавшиеся матчи, в ячейке прогноз и очки.
 // Делится на групповой этап и плей-офф (как просил организатор).
 
-// Цвет ячейки по очкам: 0 — без заливки, чем больше — тем насыщеннее зелёный (макс 11).
+// Цвет ячейки по очкам: 0 — без заливки, чем больше — тем зеленее (макс 11).
+// Текст всегда тёмный, поэтому фон держим достаточно светлым (не уходим в тёмный).
 function ptsBg(pts: number | null | undefined): string | undefined {
   if (pts == null || pts <= 0) return undefined
   const t = Math.min(pts, 11) / 11
-  return `hsl(145 55% ${88 - t * 46}%)` // 88% (бледный) → 42% (насыщенный)
+  return `hsl(140 60% ${92 - t * 30}%)` // 92% (бледный) → 62% (насыщенный, но текст читаем)
 }
 
 type Cell = { pred: string; points: number | null }
@@ -95,7 +96,7 @@ function Matrix({
                     <td
                       key={c.id}
                       className={cell?.points ? 'has-pts' : ''}
-                      style={bg ? { background: bg, color: (cell?.points ?? 0) >= 7 ? '#fff' : '#15212b' } : undefined}
+                      style={bg ? { background: bg } : undefined}
                     >
                       {cell ? (
                         <>
