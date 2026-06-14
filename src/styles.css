@@ -111,7 +111,9 @@ body {
 .grid-table { border-collapse: collapse; font-size: 13px; }
 .grid-table th, .grid-table td { border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); padding: 6px 8px; text-align: center; white-space: nowrap; }
 .grid-table thead th { position: sticky; top: 0; background: var(--bg); z-index: 2; }
-.grid-table .g-name { position: sticky; left: 0; background: var(--card); text-align: left; z-index: 1; min-width: 96px; box-shadow: 1px 0 0 var(--line); }
+.grid-table .g-rank { position: sticky; left: 0; background: var(--card); z-index: 1; width: 26px; min-width: 26px; color: var(--muted); font-weight: 700; padding: 6px 4px; }
+.grid-table thead .g-rank { z-index: 3; background: var(--bg); }
+.grid-table .g-name { position: sticky; left: 26px; background: var(--card); text-align: left; z-index: 1; min-width: 92px; box-shadow: 1px 0 0 var(--line); }
 .grid-table thead .g-name { z-index: 3; background: var(--bg); }
 .grid-table .g-flags { display: block; font-size: 15px; line-height: 1.1; }
 .grid-table .g-res { display: block; font-size: 11px; color: var(--muted); font-weight: 700; }

@@ -101,7 +101,11 @@ if step in ('upload', 'all'):
             ct = CT.get(os.path.splitext(f)[1].lower()) or mimetypes.guess_type(f)[0] or 'application/octet-stream'
             with open(full, 'rb') as fh:
                 data = fh.read()
-            r = req('PUT', key=key, body=data, content_type=ct, extra={'x-amz-acl': 'public-read'})
+            # index.html — всегда свежий (no-cache), чтобы люди не висели на старой версии;
+            # ассеты с хешем в имени — кэшируем надолго.
+            cache = 'no-cache' if key == 'index.html' else 'public, max-age=31536000, immutable'
+            r = req('PUT', key=key, body=data, content_type=ct,
+                    extra={'x-amz-acl': 'public-read', 'cache-control': cache})
             if show(f'upload {key} ({len(data)}b)', *r):
                 n += 1
     print(f'--- загружено файлов: {n}')

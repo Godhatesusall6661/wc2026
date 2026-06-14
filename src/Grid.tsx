@@ -75,6 +75,7 @@ function Matrix({
         <table className="grid-table">
           <thead>
             <tr>
+              <th className="g-rank">#</th>
               <th className="g-name">Игрок</th>
               {cols.map((c) => (
                 <th key={c.id} title={c.title}>
@@ -86,8 +87,9 @@ function Matrix({
             </tr>
           </thead>
           <tbody>
-            {names.map((name) => (
+            {names.map((name, i) => (
               <tr key={name}>
+                <td className="g-rank">{i + 1}</td>
                 <td className="g-name">{name}</td>
                 {cols.map((c) => {
                   const cell = cells.get(`${c.id}|${name}`)
