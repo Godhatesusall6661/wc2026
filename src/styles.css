@@ -116,7 +116,7 @@ body {
 .grid-table .g-flags { display: block; font-size: 15px; line-height: 1.1; }
 .grid-table .g-res { display: block; font-size: 11px; color: var(--muted); font-weight: 700; }
 .grid-table .g-pred { display: block; }
-.grid-table .g-pts { display: block; font-size: 11px; color: var(--accent); font-weight: 700; }
+.grid-table .g-pts { display: block; font-size: 11px; color: inherit; font-weight: 700; opacity: 0.85; }
 .grid-table td.has-pts { background: var(--accent-soft); }
 .grid-table .g-empty { color: var(--line); }
 .grid-table .g-sum { font-weight: 700; background: var(--bg); }
@@ -130,6 +130,12 @@ body {
   background: var(--accent); color: #fff; font-weight: 600; cursor: pointer;
 }
 .login form button:disabled { background: #b9cdc3; }
+.login-secondary {
+  width: 100%; margin-top: 10px; padding: 13px; font-size: 16px; cursor: pointer;
+  border: 1px solid var(--accent); border-radius: 12px;
+  background: var(--card); color: var(--accent); font-weight: 600;
+}
+.login-secondary:disabled { opacity: 0.5; cursor: default; }
 .hint { color: var(--muted); font-size: 13px; margin-top: 18px; line-height: 1.5; }
 .link-inline { background: none; border: none; padding: 0; font: inherit; color: var(--accent); font-weight: 600; cursor: pointer; text-decoration: underline; }
 .confirm-name { font-size: 22px; font-weight: 700; text-align: center; margin: 4px 0 14px; }

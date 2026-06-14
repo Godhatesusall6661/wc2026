@@ -1,7 +1,7 @@
 import { useState, useEffect, type FormEvent } from 'react'
 import { api, errText } from './api'
 
-// Расстояние Левенштейна — чтобы ловить опечатки в имени.
+// Расстояние Левенштейна — чтобы ловить опечатки в имени при регистрации.
 function lev(a: string, b: string): number {
   a = a.toLowerCase().trim()
   b = b.toLowerCase().trim()
@@ -17,14 +17,11 @@ function lev(a: string, b: string): number {
 
 export default function Login({ onLogin }: { onLogin: (token: string, justRegistered?: boolean) => void }) {
   const [name, setName] = useState('')
-  const [mode, setMode] = useState<'register' | 'login'>('register')
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [names, setNames] = useState<string[]>([])
-  // подтверждение создания нового игрока (вдруг опечатка)
   const [pending, setPending] = useState<{ name: string; similar: string[] } | null>(null)
 
-  // список существующих имён — для проверки на опечатку (get_leaderboard публичный)
   useEffect(() => {
     api.leaderboard().then((rows) => setNames(rows.map((r) => r.name))).catch(() => {})
   }, [])
@@ -35,7 +32,11 @@ export default function Login({ onLogin }: { onLogin: (token: string, justRegist
     try {
       onLogin(await api.login(nm), false)
     } catch (e) {
-      setErr(errText(e))
+      // не нашли имя — подсказываем, что для новичков есть отдельная кнопка
+      const msg = /не найден/i.test(errText(e))
+        ? `Имя «${nm}» не найдено. Если ты впервые — нажми «Я впервые — создать профиль».`
+        : errText(e)
+      setErr(msg)
       setBusy(false)
       setPending(null)
     }
@@ -47,7 +48,6 @@ export default function Login({ onLogin }: { onLogin: (token: string, justRegist
     try {
       onLogin(await api.register(nm), true)
     } catch (e) {
-      // вдруг кто-то занял имя между проверкой и созданием — тогда просто входим
       if (/занят|exist/i.test(errText(e))) {
         try { onLogin(await api.login(nm), false); return } catch { /* ниже */ }
       }
@@ -57,33 +57,35 @@ export default function Login({ onLogin }: { onLogin: (token: string, justRegist
     }
   }
 
-  async function submit(e: FormEvent) {
+  // «Войти» (для тех, кто уже играет) — основное действие, в т.ч. по Enter
+  function onLoginSubmit(e: FormEvent) {
     e.preventDefault()
-    setErr(null)
     const nm = name.trim()
-    if (mode === 'login') {
-      loginAs(nm)
+    if (nm.length >= 2) loginAs(nm)
+  }
+
+  // «Создать профиль» — новое имя, с защитой от опечаток
+  function onRegisterClick() {
+    const nm = name.trim()
+    if (nm.length < 2) return
+    setErr(null)
+    if (names.some((n) => n.toLowerCase() === nm.toLowerCase())) {
+      loginAs(nm) // имя уже есть — просто впускаем
       return
     }
-    // режим «Играть»: если имя уже есть — это возвращается свой игрок
-    const exists = names.some((n) => n.toLowerCase() === nm.toLowerCase())
-    if (exists) {
-      loginAs(nm)
-      return
-    }
-    // имя новое — предупреждаем (вдруг опечатка) и показываем похожие
     const similar = names.filter((n) => lev(n, nm) <= 2).slice(0, 4)
     setPending({ name: nm, similar })
   }
 
+  // экран подтверждения создания нового игрока
   if (pending) {
     return (
       <div className="login">
-        <h1>Это новое имя</h1>
+        <h1>Создать новый профиль?</h1>
         <p className="confirm-name">«{pending.name}»</p>
         {pending.similar.length > 0 ? (
           <>
-            <p className="hint">Похоже на уже играющих — может, опечатка? Выбери себя:</p>
+            <p className="hint">Похоже на уже играющих — может, это ты, просто опечатка? Нажми на себя:</p>
             <div className="similar-list">
               {pending.similar.map((s) => (
                 <button key={s} className="similar-btn" disabled={busy} onClick={() => loginAs(s)}>
@@ -94,10 +96,10 @@ export default function Login({ onLogin }: { onLogin: (token: string, justRegist
             <p className="hint">или, если ты правда новенький:</p>
           </>
         ) : (
-          <p className="hint">Раньше под этим именем никто не играл — создать нового игрока?</p>
+          <p className="hint">Раньше под этим именем никто не играл.</p>
         )}
         <button className="primary big" disabled={busy} onClick={() => createNew(pending.name)}>
-          {busy ? 'Секунду…' : `Я новенький — создать «${pending.name}»`}
+          {busy ? 'Секунду…' : `Создать профиль «${pending.name}»`}
         </button>
         <p className="hint">
           <button type="button" className="link-inline" onClick={() => { setPending(null); setErr(null) }}>
@@ -116,35 +118,30 @@ export default function Login({ onLogin }: { onLogin: (token: string, justRegist
         <br />
         ЧМ-2026
       </h1>
-      <form onSubmit={submit}>
+      <form onSubmit={onLoginSubmit}>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder={mode === 'register' ? 'Ваше имя (как вас знают в чате)' : 'Ваше имя'}
+          placeholder="Ваше имя"
           maxLength={30}
           autoFocus
         />
-        <button disabled={busy || name.trim().length < 2}>
-          {busy ? 'Секунду…' : mode === 'register' ? 'Играть!' : 'Войти'}
+        <button type="submit" disabled={busy || name.trim().length < 2}>
+          {busy ? 'Секунду…' : 'Войти'}
         </button>
       </form>
+      <button
+        type="button"
+        className="login-secondary"
+        disabled={busy || name.trim().length < 2}
+        onClick={onRegisterClick}
+      >
+        Я впервые — создать профиль
+      </button>
       {err && <p className="error">{err}</p>}
       <p className="hint">
-        {mode === 'register' ? (
-          <>
-            Уже играли?{' '}
-            <button type="button" className="link-inline" onClick={() => { setMode('login'); setErr(null) }}>
-              Войти по имени
-            </button>
-          </>
-        ) : (
-          <>
-            Первый раз тут?{' '}
-            <button type="button" className="link-inline" onClick={() => { setMode('register'); setErr(null) }}>
-              Зарегистрироваться
-            </button>
-          </>
-        )}
+        Уже играл(а) — впиши имя и жми <b>«Войти»</b>.<br />
+        Первый раз — <b>«Создать профиль»</b> (лучше имя и фамилию, у нас много тёзок).
       </p>
     </div>
   )
