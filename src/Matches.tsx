@@ -91,7 +91,17 @@ export default function Matches({ token }: { token: string }) {
     else days.push({ label, items: [m] })
   }
 
-  const visibleDays = showAll ? days : days.slice(0, 2)
+  // По умолчанию всегда открыты ближайшие ≥5 матчей (можно ставить заранее).
+  let visibleDays = days
+  if (!showAll) {
+    visibleDays = []
+    let cnt = 0
+    for (const d of days) {
+      visibleDays.push(d)
+      cnt += d.items.length
+      if (cnt >= 5) break
+    }
+  }
 
   return (
     <div>
@@ -111,9 +121,9 @@ export default function Matches({ token }: { token: string }) {
           ))}
         </section>
       ))}
-      {days.length > 2 && (
+      {days.length > visibleDays.length && (
         <button className="show-all" onClick={() => setShowAll(!showAll)}>
-          {showAll ? '↑ Свернуть до ближайших' : `Показать всё расписание (ещё ${plural(days.length - 2)})`}
+          {showAll ? '↑ Свернуть до ближайших' : `Показать всё расписание (ещё ${plural(days.length - visibleDays.length)})`}
         </button>
       )}
       {finished.length > 0 && (
