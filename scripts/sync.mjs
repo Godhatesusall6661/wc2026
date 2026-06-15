@@ -34,6 +34,7 @@ const ALIAS = {
   ivorycoast: 'cotedivoire',
   usa: 'unitedstates',
   capeverdeislands: 'capeverde', // football-data зовёт «Cape Verde Islands», odds-API — «Cape Verde»
+  congodr: 'drcongo', // football-data: «Congo DR», odds-API: «DR Congo»
 }
 const norm = (s) => {
   const n = (s ?? '').toLowerCase().replace(/[^a-z]/g, '')
