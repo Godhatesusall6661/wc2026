@@ -35,7 +35,7 @@ body {
 .content { padding: 0 12px; }
 
 .tabs {
-  position: fixed; bottom: 0; left: 0; right: 0;
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
   display: flex; justify-content: center; gap: 2px;
   background: var(--card); border-top: 1px solid var(--line);
   padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
@@ -111,17 +111,31 @@ body {
 .grid-table { border-collapse: collapse; font-size: 13px; }
 .grid-table th, .grid-table td { border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); padding: 6px 8px; text-align: center; white-space: nowrap; }
 .grid-table thead th { position: sticky; top: 0; background: var(--bg); z-index: 2; }
-.grid-table .g-rank { position: sticky; left: 0; background: var(--card); z-index: 1; width: 26px; min-width: 26px; color: var(--muted); font-weight: 700; padding: 6px 4px; }
+.grid-table .g-rank { position: sticky; left: 0; background: var(--card); z-index: 1; width: 26px; min-width: 26px; color: var(--muted); font-weight: 700; padding: 6px 4px; border-right: none; }
 .grid-table thead .g-rank { z-index: 3; background: var(--bg); }
-.grid-table .g-name { position: sticky; left: 26px; background: var(--card); text-align: left; z-index: 1; min-width: 92px; box-shadow: 1px 0 0 var(--line); }
+/* left на 1px меньше ширины «#» (26px) — столбцы перекрываются, между ними нет
+   прозрачного шва, в который просвечивали зелёные ячейки при скролле. */
+.grid-table .g-name { position: sticky; left: 25px; background: var(--card); text-align: left; z-index: 1; min-width: 92px; box-shadow: 1px 0 0 var(--line); }
 .grid-table thead .g-name { z-index: 3; background: var(--bg); }
 .grid-table .g-flags { display: block; font-size: 15px; line-height: 1.1; }
 .grid-table .g-res { display: block; font-size: 11px; color: var(--muted); font-weight: 700; }
+.grid-table .g-date { display: block; font-size: 10px; color: var(--muted); font-weight: 600; line-height: 1.15; text-transform: lowercase; }
 .grid-table .g-pred { display: block; }
 .grid-table .g-pts { display: block; font-size: 11px; color: inherit; font-weight: 700; opacity: 0.85; }
 .grid-table td.has-pts { background: var(--accent-soft); }
 .grid-table .g-empty { color: var(--line); }
 .grid-table .g-sum { font-weight: 700; background: var(--bg); }
+/* Ближайшие (ещё не сыгранные) матчи в сетке — лёгкая подсветка шапки. */
+.grid-table thead th.col-soon { background: var(--accent-soft); }
+.grid-table th.col-soon .g-res { color: var(--accent); font-weight: 700; }
+.grid-table th.col-live .g-res { color: #c0392b; }
+.refresh-bar { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin: 4px 0 8px; }
+.refresh-bar .link-btn { padding: 2px 7px; line-height: 1.4; }
+/* Полноширинный режим (админская «Сетка для скрина»): выносим из 640px-контейнера
+   на всю ширину окна, таблица растягивается на доступную ширину. */
+.grid-view--full { width: 100vw; position: relative; left: 50%; transform: translateX(-50%); padding: 0 16px; }
+.grid-view--full .grid-table { width: 100%; }
+.grid-title { font-size: 18px; margin: 6px 0 10px; }
 
 .login { max-width: 420px; margin: 10vh auto 0; padding: 0 20px; text-align: center; }
 .login h1 { font-size: 26px; line-height: 1.3; }

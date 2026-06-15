@@ -2,8 +2,38 @@ import { useEffect, useState } from 'react'
 import { api, errText } from './api'
 import type { Match, Person } from './types'
 import { teamLabel, STAGES } from './teams'
+import Grid from './Grid'
+
+const screenDateFmt = new Intl.DateTimeFormat('ru-RU', {
+  day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Europe/Moscow',
+})
 
 export default function Admin({ token }: { token: string }) {
+  const [view, setView] = useState<'grid' | 'manage'>('grid')
+  return (
+    <div>
+      <div className="seg">
+        <button className={view === 'grid' ? 'on' : ''} onClick={() => setView('grid')}>
+          Сетка для скрина
+        </button>
+        <button className={view === 'manage' ? 'on' : ''} onClick={() => setView('manage')}>
+          Управление
+        </button>
+      </div>
+      {view === 'grid' ? (
+        <Grid
+          full
+          includeUpcoming={false}
+          heading={`Прогнозы ЧМ-2026 · ${screenDateFmt.format(Date.now())}`}
+        />
+      ) : (
+        <AdminManage token={token} />
+      )}
+    </div>
+  )
+}
+
+function AdminManage({ token }: { token: string }) {
   const [matches, setMatches] = useState<Match[]>([])
   const [people, setPeople] = useState<Person[]>([])
   const [err, setErr] = useState<string | null>(null)

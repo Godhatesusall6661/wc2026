@@ -212,7 +212,8 @@ begin
         updated_at = now();
 end $$;
 
--- Прогнозы всех по матчу — только после начала, чтобы нельзя было списать
+-- Прогнозы всех по матчу — открыты всем игрокам (прозрачность лиги, по просьбе
+-- участников). Очки показываем только после FINISHED, до этого points = null.
 create or replace function get_match_predictions(p_match_id bigint)
 returns table (name text, home_goals int, away_goals int, points int)
 language plpgsql stable security definer set search_path = public
@@ -222,9 +223,6 @@ begin
   select * into m from matches where id = p_match_id;
   if not found then
     raise exception 'Матч не найден';
-  end if;
-  if m.kickoff > now() and not m.force_open then
-    raise exception 'Чужие прогнозы откроются после начала матча';
   end if;
   return query
     select pa.name, p.home_goals, p.away_goals,
@@ -280,7 +278,9 @@ as $$
   order by 6 desc, 5 desc, 1
 $$;
 
--- Общая «сетка»: прогнозы всех на все НАЧАВШИЕСЯ матчи (до старта — скрыто).
+-- Общая «сетка»: прогнозы всех на сыгранные/идущие матчи ПЛЮС ближайшие 5
+-- предстоящих (по просьбе участников — ставки видны заранее, для прозрачности).
+-- У предстоящих матчей points = null (очки начислятся после игры).
 -- Клиент строит из этого две матрицы: групповой этап и плей-офф.
 create or replace function get_grid()
 returns table (
@@ -300,16 +300,29 @@ returns table (
 )
 language sql stable security definer set search_path = public
 as $$
+  with upcoming5 as (
+    -- ближайшие 5 ещё не начавшихся матчей с определившейся парой
+    select id from matches
+    where kickoff > now()
+      and home_team is not null and away_team is not null
+    order by kickoff, id
+    limit 5
+  ),
+  shown as (
+    select m.* from matches m
+    where m.kickoff <= now()
+       or m.force_open
+       or m.id in (select id from upcoming5)
+  )
   select m.id, m.stage, m.group_name, m.kickoff, m.home_team, m.away_team, m.status,
          m.home_goals, m.away_goals,
          pa.name, p.home_goals, p.away_goals,
          case when m.status = 'FINISHED'
               then match_points(p.home_goals, p.away_goals, m.home_goals, m.away_goals)
               else null end
-  from matches m
+  from shown m
   join predictions p   on p.match_id = m.id
   join participants pa on pa.id = p.participant_id
-  where (m.kickoff <= now() or m.force_open)
   order by m.kickoff, m.id, pa.name
 $$;
 
@@ -374,6 +387,33 @@ begin
 end $$;
 
 -- ---------- RPC для администратора ----------
+
+-- Бэкфилл прогноза игрока в обход kickoff-гейта save_prediction. Только админ.
+-- Нужно для эксельных/чатовых прогнозов, записанных игроком ДО матча, но
+-- внесённых позже (например, у игрока были проблемы со входом). Все прогнозы
+-- видны в открытой сетке, поэтому злоупотребить незаметно нельзя.
+create or replace function admin_backfill_prediction(
+  p_token uuid, p_name text, p_match_id bigint, p_home int, p_away int
+)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+declare v_pid uuid;
+begin
+  perform _admin(p_token);
+  select id into v_pid from participants where lower(name) = lower(btrim(p_name));
+  if v_pid is null then
+    raise exception 'Игрок «%» не найден', p_name;
+  end if;
+  if p_home is null or p_away is null
+     or p_home not between 0 and 99 or p_away not between 0 and 99 then
+    raise exception 'Счёт должен быть 0..99';
+  end if;
+  insert into predictions (participant_id, match_id, home_goals, away_goals)
+  values (v_pid, p_match_id, p_home, p_away)
+  on conflict (participant_id, match_id) do update
+    set home_goals = excluded.home_goals, away_goals = excluded.away_goals, updated_at = now();
+end $$;
 
 create or replace function admin_set_result(
   p_token uuid, p_match_id bigint,

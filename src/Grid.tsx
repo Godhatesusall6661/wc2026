@@ -1,10 +1,30 @@
-import { useEffect, useState } from 'react'
-import { api, errText } from './api'
-import type { GridRow, LeaderRow } from './types'
+import { useEffect, useRef } from 'react'
+import { api } from './api'
+import { usePoll } from './usePoll'
+import type { GridRow } from './types'
 import { teamFlag, teamLabel, stageLabel } from './teams'
+
+// Дата + время последнего обновления — видно и что ставки «живые», и сегодняшнее число.
+const clockFmt = new Intl.DateTimeFormat('ru-RU', {
+  weekday: 'short', day: '2-digit', month: '2-digit',
+  hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Europe/Moscow',
+})
 
 // Общая «сетка»: строки — игроки, столбцы — начавшиеся матчи, в ячейке прогноз и очки.
 // Делится на групповой этап и плей-офф (как просил организатор).
+
+// Время начала ближайших (ещё не сыгранных) матчей — в шапке столбца вместо счёта.
+const colTimeFmt = new Intl.DateTimeFormat('ru-RU', {
+  hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow',
+})
+const colDateFmt = new Intl.DateTimeFormat('ru-RU', {
+  weekday: 'short', day: 'numeric', month: 'long',
+  hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow',
+})
+// Компактная дата для шапки предстоящего матча: «пн 15.06».
+const colHeaderDateFmt = new Intl.DateTimeFormat('ru-RU', {
+  weekday: 'short', day: '2-digit', month: '2-digit', timeZone: 'Europe/Moscow',
+})
 
 // Цвет ячейки по очкам: 0 — без заливки, чем больше — тем зеленее (макс 11).
 // Текст всегда тёмный, поэтому фон держим достаточно светлым (не уходим в тёмный).
@@ -15,10 +35,13 @@ function ptsBg(pts: number | null | undefined): string | undefined {
 }
 
 type Cell = { pred: string; points: number | null }
+type MatchState = 'finished' | 'live' | 'upcoming'
 type MatchCol = {
   id: number
   header: string // флаги пары
-  result: string // счёт или '—'
+  result: string // счёт / 'идёт' / время начала
+  date?: string // дата начала (только для предстоящих) — над временем
+  state: MatchState
   title: string // для подсказки
 }
 
@@ -28,12 +51,26 @@ function buildSection(rows: GridRow[], names: string[]) {
 
   for (const r of rows) {
     if (!matchMap.has(r.match_id)) {
+      const finished = r.status === 'FINISHED' && r.home_goals != null && r.away_goals != null
+      const state: MatchState = finished
+        ? 'finished'
+        : new Date(r.kickoff).getTime() <= Date.now()
+          ? 'live'
+          : 'upcoming'
       matchMap.set(r.match_id, {
         id: r.match_id,
         header: `${teamFlag(r.home_team)}${teamFlag(r.away_team)}`,
         result:
-          r.home_goals != null && r.away_goals != null ? `${r.home_goals}:${r.away_goals}` : '—',
-        title: `${teamLabel(r.home_team)} — ${teamLabel(r.away_team)} (${stageLabel(r)})`,
+          state === 'finished'
+            ? `${r.home_goals}:${r.away_goals}`
+            : state === 'live'
+              ? 'идёт'
+              : colTimeFmt.format(new Date(r.kickoff)),
+        date: state === 'upcoming' ? colHeaderDateFmt.format(new Date(r.kickoff)) : undefined,
+        state,
+        title:
+          `${teamLabel(r.home_team)} — ${teamLabel(r.away_team)} (${stageLabel(r)})` +
+          (finished ? '' : ` · ${colDateFmt.format(new Date(r.kickoff))}`),
       })
     }
     cells.set(`${r.match_id}|${r.participant}`, {
@@ -52,13 +89,27 @@ function buildSection(rows: GridRow[], names: string[]) {
 }
 
 function Matrix({
-  title, rows, names,
+  title, rows, names, scrollToEnd = true,
 }: {
   title: string
   rows: GridRow[]
   names: string[]
+  scrollToEnd?: boolean
 }) {
-  if (rows.length === 0) {
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const built = rows.length ? buildSection(rows, names) : null
+  const colCount = built?.cols.length ?? 0
+  const hasUpcoming = built?.cols.some((c) => c.state !== 'finished') ?? false
+
+  // Есть текущие/предстоящие матчи → проматываем сетку к правому краю, чтобы
+  // свежие столбцы (ближайшие ставки) и Σ были видны сразу, без ручного скролла.
+  // В режиме скрина (scrollToEnd=false) не трогаем — кадр должен начинаться слева.
+  useEffect(() => {
+    const el = wrapRef.current
+    if (el && scrollToEnd && hasUpcoming) el.scrollLeft = el.scrollWidth
+  }, [colCount, hasUpcoming, scrollToEnd])
+
+  if (!built) {
     return (
       <section className="grid-section">
         <h3>{title}</h3>
@@ -66,20 +117,27 @@ function Matrix({
       </section>
     )
   }
-  const { cols, cells, rowTotal } = buildSection(rows, names)
+  const { cols, cells, rowTotal } = built
 
   return (
     <section className="grid-section">
       <h3>{title}</h3>
-      <div className="grid-wrap">
+      <div className="grid-wrap" ref={wrapRef}>
         <table className="grid-table">
           <thead>
             <tr>
               <th className="g-rank">#</th>
               <th className="g-name">Игрок</th>
               {cols.map((c) => (
-                <th key={c.id} title={c.title}>
+                <th
+                  key={c.id}
+                  title={c.title}
+                  className={
+                    c.state === 'upcoming' ? 'col-soon' : c.state === 'live' ? 'col-live' : undefined
+                  }
+                >
                   <span className="g-flags">{c.header}</span>
+                  {c.date && <span className="g-date">{c.date}</span>}
                   <span className="g-res">{c.result}</span>
                 </th>
               ))}
@@ -121,45 +179,85 @@ function Matrix({
   )
 }
 
-export default function Grid() {
-  const [grid, setGrid] = useState<GridRow[] | null>(null)
-  const [leaders, setLeaders] = useState<LeaderRow[] | null>(null)
-  const [err, setErr] = useState<string | null>(null)
+export default function Grid({
+  full = false,
+  includeUpcoming = true,
+  heading,
+}: {
+  full?: boolean
+  includeUpcoming?: boolean
+  heading?: string
+}) {
+  // Авто-обновление каждые 30 сек: ставки на ближайшие матчи редактируемы до
+  // начала, и грид должен показывать актуальные значения, а не закэшированные.
+  const { data, err, refreshing, updatedAt, reload } = usePoll(
+    () => Promise.all([api.grid(), api.leaderboard()]).then(([g, l]) => ({ g, l })),
+    30000,
+  )
 
-  useEffect(() => {
-    Promise.all([api.grid(), api.leaderboard()])
-      .then(([g, l]) => {
-        setGrid(g)
-        setLeaders(l)
-      })
-      .catch((e) => setErr(errText(e)))
-  }, [])
+  if (err && !data) return <p className="error screen-msg">{err}</p>
+  if (!data) return <p className="screen-msg">Загрузка…</p>
 
-  if (err) return <p className="error screen-msg">{err}</p>
-  if (!grid || !leaders) return <p className="screen-msg">Загрузка…</p>
-
+  // Режим скрина (includeUpcoming=false): убираем столбцы ещё не начавшихся
+  // матчей — в таблице только сыгранные/идущие. Σ не меняется (у будущих очков нет).
+  const now = Date.now()
+  const grid = includeUpcoming
+    ? data.g
+    : data.g.filter((r) => new Date(r.kickoff).getTime() <= now)
   // строки — все игроки в порядке таблицы лидеров
-  const names = leaders.map((l) => l.name)
+  const names = data.l.map((l) => l.name)
   const groupRows = grid.filter((r) => r.stage === 'GROUP_STAGE')
   const koRows = grid.filter((r) => r.stage !== 'GROUP_STAGE')
 
+  const bar = (
+    <div className="refresh-bar">
+      <span className="small">
+        {updatedAt ? `ставки актуальны на ${clockFmt.format(updatedAt)}` : 'обновляю…'}
+        {refreshing && updatedAt ? ' · обновляю…' : ''}
+        {err && updatedAt ? ' · ⚠ сеть' : ''}
+      </span>
+      <button className="link-btn" onClick={() => reload()} disabled={refreshing} title="Обновить сейчас">
+        🔄
+      </button>
+    </div>
+  )
+
+  const viewClass = 'grid-view' + (full ? ' grid-view--full' : '')
+
   if (grid.length === 0) {
     return (
-      <p className="screen-msg">
-        Матчи ещё не начинались.
-        <br />
-        Сетка заполнится после первых игр — прогнозы открываются по свистку.
-      </p>
+      <div className={viewClass}>
+        {heading && <h2 className="grid-title">{heading}</h2>}
+        {bar}
+        <p className="screen-msg">
+          {includeUpcoming
+            ? 'Пока никто не поставил прогноз.'
+            : 'Сыгранных матчей пока нет — таблица заполнится после первых игр.'}
+        </p>
+      </div>
     )
   }
 
   return (
-    <div className="grid-view">
-      <Matrix title="Групповой этап" rows={groupRows} names={names} />
-      <Matrix title="Плей-офф" rows={koRows} names={names} />
+    <div className={viewClass}>
+      {heading && <h2 className="grid-title">{heading}</h2>}
+      {bar}
+      <Matrix title="Групповой этап" rows={groupRows} names={names} scrollToEnd={!full} />
+      <Matrix title="Плей-офф" rows={koRows} names={names} scrollToEnd={!full} />
       <p className="small footnote">
-        В ячейке — прогноз и набранные очки. Σ — сумма очков за этап. Прогнозы видны только по
-        начавшимся матчам.
+        {includeUpcoming ? (
+          <>
+            В ячейке — прогноз, зелёным — набранные очки, Σ — сумма за этап. Ближайшие матчи (со
+            временем вместо счёта) показаны заранее: ставки видны всем, очки начислятся после игры.
+            Сетка сама обновляется каждые 30 сек — если кто-то поменяет прогноз до начала матча,
+            это сразу видно. После начала матча прогноз уже не изменить.
+          </>
+        ) : (
+          <>
+            В ячейке — прогноз и набранные очки за матч. Зелёным — очки, Σ — сумма за этап. Показаны
+            только сыгранные и идущие матчи (без прогнозов на будущие).
+          </>
+        )}
       </p>
     </div>
   )

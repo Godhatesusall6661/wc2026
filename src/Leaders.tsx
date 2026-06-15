@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
-import { api, errText } from './api'
-import type { LeaderRow } from './types'
+import { useState } from 'react'
+import { api } from './api'
+import { usePoll } from './usePoll'
 import { teamLabel } from './teams'
 import Grid from './Grid'
 
@@ -22,14 +22,9 @@ export default function Leaders() {
 }
 
 function LeaderTable() {
-  const [rows, setRows] = useState<LeaderRow[] | null>(null)
-  const [err, setErr] = useState<string | null>(null)
+  const { data: rows, err } = usePoll(() => api.leaderboard(), 30000)
 
-  useEffect(() => {
-    api.leaderboard().then(setRows).catch((e) => setErr(errText(e)))
-  }, [])
-
-  if (err) return <p className="error screen-msg">{err}</p>
+  if (err && !rows) return <p className="error screen-msg">{err}</p>
   if (!rows) return <p className="screen-msg">Загрузка…</p>
   if (rows.length === 0) return <p className="screen-msg">Пока никто не зарегистрировался.</p>
 

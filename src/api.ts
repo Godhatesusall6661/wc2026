@@ -12,6 +12,7 @@ async function rpc<T>(fn: string, args: Record<string, unknown> = {}): Promise<T
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(args),
+        cache: 'no-store', // всегда свежие данные (ставки меняются до начала матча)
       })
     : await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
         method: 'POST',
@@ -21,6 +22,7 @@ async function rpc<T>(fn: string, args: Record<string, unknown> = {}): Promise<T
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(args),
+        cache: 'no-store',
       })
   const text = await res.text()
   let data: any = null

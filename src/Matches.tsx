@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, errText } from './api'
+import { usePoll } from './usePoll'
 import type { Match, MatchPrediction } from './types'
 import { teamLabel, stageLabel } from './teams'
 import TeamSheet from './TeamSheet'
@@ -58,6 +59,24 @@ export default function Matches({ token }: { token: string }) {
       })
       .catch((e) => setErr(errText(e)))
   }, [token])
+
+  // Авто-обновление счетов/статусов/кэфов каждые 30 сек + при возврате на вкладку.
+  // Обновляем ТОЛЬКО список матчей — черновики прогнозов (drafts) не трогаем,
+  // чтобы не затереть то, что игрок сейчас вводит.
+  useEffect(() => {
+    const refresh = () => api.matches().then(setMatches).catch(() => {})
+    const id = setInterval(refresh, 30000)
+    const onVisible = () => {
+      if (!document.hidden) refresh()
+    }
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      clearInterval(id)
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [])
 
   function setDraft(id: number, d: Draft) {
     setDrafts((prev) => ({ ...prev, [id]: d }))
@@ -235,29 +254,29 @@ function MatchCard({
       {finished && m.winner && m.home_goals != null && m.home_goals === m.away_goals && (
         <div className="pens">По пенальти дальше: {teamLabel(m.winner)}</div>
       )}
-      {started && <AllPredictions matchId={m.id} />}
+      {m.home_team && m.away_team && <AllPredictions matchId={m.id} />}
     </div>
   )
 }
 
 function AllPredictions({ matchId }: { matchId: number }) {
-  const [preds, setPreds] = useState<MatchPrediction[] | null>(null)
-  const [err, setErr] = useState<string | null>(null)
+  const [open, setOpen] = useState(false)
+  // Пока блок раскрыт — обновляем каждые 30 сек: до начала матча игроки могут
+  // переставить прогноз, и список должен показывать актуальные ставки.
+  const { data: preds, err } = usePoll(() => api.matchPredictions(matchId), 30000, open)
 
   return (
     <details
       className="all-preds"
-      onToggle={(e) => {
-        if ((e.target as HTMLDetailsElement).open && !preds && !err) {
-          api.matchPredictions(matchId).then(setPreds).catch((er) => setErr(errText(er)))
-        }
-      }}
+      onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}
     >
       <summary>Прогнозы всех</summary>
-      {err && <p className="error">{err}</p>}
-      {!preds && !err && <p className="small">Загрузка…</p>}
-      {preds && preds.length === 0 && <p className="small">Никто не дал прогноз на этот матч.</p>}
-      {preds && preds.length > 0 && (
+      {open && err && !preds && <p className="error">{err}</p>}
+      {open && !preds && !err && <p className="small">Загрузка…</p>}
+      {open && preds && preds.length === 0 && (
+        <p className="small">Никто не дал прогноз на этот матч.</p>
+      )}
+      {open && preds && preds.length > 0 && (
         <table>
           <tbody>
             {preds.map((p) => (

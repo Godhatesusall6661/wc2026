@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { api, errText } from './api'
+import { api } from './api'
+import { usePoll } from './usePoll'
 import type { Match } from './types'
 import { teamLabel } from './teams'
 
@@ -49,14 +49,10 @@ function diff(r: Row): string {
 }
 
 export default function Groups() {
-  const [matches, setMatches] = useState<Match[] | null>(null)
-  const [err, setErr] = useState<string | null>(null)
+  // Авто-обновление каждые 30 сек: таблицы групп считаются из результатов матчей.
+  const { data: matches, err } = usePoll(() => api.matches(), 30000)
 
-  useEffect(() => {
-    api.matches().then(setMatches).catch((e) => setErr(errText(e)))
-  }, [])
-
-  if (err) return <p className="error screen-msg">{err}</p>
+  if (err && !matches) return <p className="error screen-msg">{err}</p>
   if (!matches) return <p className="screen-msg">Загрузка…</p>
 
   // группируем матчи группового этапа по группе
